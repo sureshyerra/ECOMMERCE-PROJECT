@@ -15,6 +15,7 @@ import com.example.Ecommerce.repository.ProductRepository;
 import com.example.Ecommerce.service.OrderService;
 import com.example.Ecommerce.service.ProductService;
 import com.example.Ecommerce.transformer.ItemTransformer;
+import com.example.Ecommerce.transformer.OrderTransformer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -38,6 +39,9 @@ public class OrderServiceimpl implements OrderService {
     CardRepository cardRespository;
     @Autowired
     private OrderedRepository orderedRepository;
+    @Autowired
+    private JavaMailSender emailSender;
+
 
     public Ordered placeOrder(Customer customer, Card card) throws Exception {
 
@@ -114,25 +118,25 @@ public class OrderServiceimpl implements OrderService {
 
         Ordered savedOrder = orderedRepository.save(order); // order and item
 
-        OrderResponseDto orderResponseDto = new OrderResponseDto();
-        orderResponseDto.setOrderDate(savedOrder.getOrderDate());
-        orderResponseDto.setCardUsed(savedOrder.getCardUsed());
+        OrderResponseDto orderResponseDto = OrderTransformer.OrderToOrderResponseDto(savedOrder);
         orderResponseDto.setCustomerName(customer.getName());
-        orderResponseDto.setOrderNo(savedOrder.getOrderNo());
-        orderResponseDto.setTotalValue(savedOrder.getTotalValue());
+
 
         List<ItemResponseDto> items = new ArrayList<>();
         for(Item itemEntity: savedOrder.getItems()){
-            ItemResponseDto itemResponseDto = new ItemResponseDto();
-            itemResponseDto.setPriceOfOneItem(itemEntity.getProduct().getPrice());
-            itemResponseDto.setTotalPrice(itemEntity.getRequiredQuantity()*itemEntity.getProduct().getPrice());
-            itemResponseDto.setProductName(itemEntity.getProduct().getName());
-            itemResponseDto.setQuantity(itemEntity.getRequiredQuantity());
+            ItemResponseDto itemResponseDto = ItemTransformer.ItemToItemResponseDto(itemEntity);
 
             items.add(itemResponseDto);
         }
 
         orderResponseDto.setItems(items);
+        String text = "congrats " + customer.getName() + " your orderNo " + savedOrder.getOrderNo() + " orderedOn " + savedOrder.getOrderDate() + " have been sucessfully booked";
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom("yerraraja26@gmail.com");
+        message.setTo(customer.getEmailId());
+        message.setSubject("Order Booked");
+        message.setText(text);
+        emailSender.send(message);
         return orderResponseDto;
 
 
